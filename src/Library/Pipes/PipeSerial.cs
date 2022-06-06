@@ -2,14 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using CompAndDel.Filters;
 using CompAndDel;
 
 namespace CompAndDel.Pipes
 {
     public class PipeSerial : IPipe
     {
+        protected static IFilter sequenceFilter { get; set; } = new FilterSavePicture();
+        protected static IFilter twitterFilter { get; set; } = new FilterTwitter();
         protected IFilter filtro;
         protected IPipe nextPipe;
+        protected PipeConditional nextConditionalPipe;
         
         /// <summary>
         /// La cañería recibe una imagen, le aplica un filtro y la envía a la siguiente cañería
@@ -42,7 +46,27 @@ namespace CompAndDel.Pipes
         public IPicture Send(IPicture picture)
         {
             picture = this.filtro.Filter(picture);
-            return this.nextPipe.Send(picture);
+            sequenceFilter.Filter(picture);
+            if (!(this.filtro is FilterTwitter))
+            {
+                twitterFilter.Filter(picture);
+            }
+            if (this.nextPipe != null)
+            {
+                return this.nextPipe.Send(picture);
+            }
+            else
+            {
+                return this.nextConditionalPipe.Send(picture);
+            }
+        }
+
+        public void AddConditionalPipe(PipeConditional conditional)
+        {
+            if (this.nextPipe == null)
+            {
+                this.nextConditionalPipe = conditional;
+            }
         }
     }
 }
